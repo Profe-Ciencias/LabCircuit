@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>⚡ LabCircuit</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap');
+
+:root {
+  --bg:     #141926;
+  --surf:   #1d2538;
+  --surf2:  #263047;
+  --bdr:    #36486b;
+  --yellow: #f9c74f;
+  --red:    #f94144;
+  --green:  #43aa8b;
+  --blue:   #4cc9f0;
+  --txt:    #e8edf5;
+  --muted:  #6e85a8;
+  --ft:     'Fredoka One', cursive;
+  --fb:     'Nunito', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+html, body {
+  height: 100%;
+  font-family: var(--fb);
+  background: var(--bg);
+  color: var(--txt);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ══ LAYOUT DESKTOP: sidebar izquierda ══ */
+#app {
+  display: grid;
+  grid-template-rows: 52px 1fr 46px;
+  grid-template-columns: 200px 1fr;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ══ MÓVIL (≤ 640px): barra arriba, workspace abajo ══ */
+@media (max-width: 640px) {
+  #app {
+    grid-template-rows: 48px 82px 1fr 44px;
+    grid-template-columns: 1fr;
+  }
+  #hdr  { grid-column: 1; grid-row: 1 }
+  #sb   {
+    grid-column: 1; grid-row: 2;
+    flex-direction: row;
+    overflow-x: scroll; overflow-y: hidden;
+    border-right: none; border-bottom: 2px solid var(--bdr);
+    padding: 8px 10px; gap: 8px;
+    /* scroll nativo sin interferencia */
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  #sb::-webkit-scrollbar { display: none }
+  #sb h2 { display: none }
+  /* tarjetas en columna compacta */
+  .cc {
+    flex-direction: column; gap: 4px;
+    padding: 6px 8px 8px;
+    min-width: 64px; flex-shrink: 0;
+  }
+  .cc svg  { width: 38px; height: 32px }
+  .cc span { font-size: .62rem }
+  #ws  { grid-column: 1; grid-row: 3; touch-action: none }
+  #ftr { grid-column: 1; grid-row: 4 }
+  .credits { display: none }
+  #hdr h1  { font-size: 1rem }
+  .btn { font-size: .68rem; padding: 4px 9px }
+  /* botón eliminar SIEMPRE visible en móvil */
+  .del { display: flex !important }
+}
+
+/* fin layout móvil */
+
+/* ── HEADER ── */
+#hdr {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px;
+  background: var(--surf);
+  border-bottom: 2px solid var(--bdr);
+  gap: 8px;
+}
+#hdr h1 { font-family: var(--ft); font-size: 1.25rem; color: var(--yellow); white-space: nowrap }
+#hdr h1 span { color: var(--blue) }
+.ha { display: flex; gap: 6px; align-items: center }
+
+/* ── BOTONES ── */
+.btn {
+  font-family: var(--fb); font-weight: 700; font-size: .76rem;
+  padding: 5px 12px; border-radius: 30px; border: 2px solid transparent;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.by { background: var(--yellow); color: #141926; border-color: var(--yellow); box-shadow: 0 0 10px rgba(249,199,79,.3) }
+.by:hover { transform: translateY(-1px); box-shadow: 0 0 18px rgba(249,199,79,.5) }
+.br { background: transparent; color: var(--red); border-color: var(--red) }
+.br:hover { background: var(--red); color: #fff }
+.bg { background: transparent; color: var(--muted); border-color: var(--bdr) }
+.bg:hover { border-color: var(--muted); color: var(--txt) }
+
+/* ── SIDEBAR ── */
+#sb {
+  grid-row: 2; grid-column: 1;
+  background: var(--surf);
+  border-right: 2px solid var(--bdr);
+  overflow-y: auto; overflow-x: hidden;
+  padding: 10px 8px;
+  display: flex; flex-direction: column; gap: 7px;
+  /* scrollbar sutil */
+  scrollbar-width: thin;
+  scrollbar-color: var(--bdr) transparent;
+}
+#sb::-webkit-scrollbar { width: 4px }
+#sb::-webkit-scrollbar-thumb { background: var(--bdr); border-radius: 4px }
+#sb h2 {
+  font-family: var(--ft); font-size: .75rem; color: var(--muted);
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 2px 4px 8px; border-bottom: 1px solid var(--bdr); margin-bottom: 2px;
+}
+
+/* ── TARJETA COMPONENTE ── */
+.cc {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 9px 6px 7px;
+  border-radius: 10px; border: 2px solid var(--bdr);
+  cursor: grab; transition: all .15s; background: var(--surf2);
+}
+.cc:hover { border-color: var(--yellow); transform: translateY(-2px) scale(1.02); box-shadow: 0 5px 16px rgba(0,0,0,.4) }
+.cc:active { cursor: grabbing }
+.cc svg { width: 54px; height: 46px; pointer-events: none }
+.cc span { font-size: .68rem; font-weight: 800; color: var(--muted); text-align: center }
+
+/* ── WORKSPACE ── */
+#ws {
+  grid-row: 2; grid-column: 2;
+  position: relative; overflow: hidden;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* hint */
+#hint { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; pointer-events: none; transition: opacity .4s }
+#hint.hidden { opacity: 0 }
+#hint .hi { font-size: 3rem; line-height: 1 }
+#hint p { font-size: .82rem; color: var(--muted); margin-top: 10px; font-weight: 600;
+  text-align: center; max-width: 230px; line-height: 1.5 }
+
+/* ── SVG WIRE CANVAS ── */
+#wc { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; overflow: visible }
+
+/* ── COMPONENTE COLOCADO ── */
+.pc { position: absolute; z-index: 5; display: flex; flex-direction: column; align-items: center; gap: 3px }
+.cb {
+  position: relative; border-radius: 10px; border: 2px solid var(--bdr);
+  background: var(--surf2); padding: 8px 10px 6px;
+  transition: border-color .25s, box-shadow .25s;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: move;
+}
+.cb svg { width: 56px; height: 52px }
+.cl { font-size: .6rem; font-weight: 800; color: var(--muted); text-align: center }
+
+/* ── TERMINALES ── */
+.term {
+  position: absolute; width: 16px; height: 16px; border-radius: 50%;
+  border: 2.5px solid var(--yellow); background: var(--surf);
+  cursor: crosshair; z-index: 15; transition: all .12s;
+  display: flex; align-items: center; justify-content: center;
+}
+.term:hover, .term.sel { background: var(--yellow); box-shadow: 0 0 10px rgba(249,199,79,.6) }
+.term.neg { border-color: var(--red) }
+.term.neg:hover, .term.neg.sel { background: var(--red); box-shadow: 0 0 10px rgba(249,65,68,.55) }
+/* posiciones */
+.term[data-p="top"]    { top: -9px;    left: 50%; transform: translateX(-50%) }
+.term[data-p="bottom"] { bottom: -9px; left: 50%; transform: translateX(-50%) }
+.term[data-p="left"]   { left: -9px;   top: 50%;  transform: translateY(-50%) }
+.term[data-p="right"]  { right: -9px;  top: 50%;  transform: translateY(-50%) }
+.term[data-p="top"]:hover,    .term[data-p="top"].sel    { transform: translateX(-50%) scale(1.4) }
+.term[data-p="bottom"]:hover, .term[data-p="bottom"].sel { transform: translateX(-50%) scale(1.4) }
+.term[data-p="left"]:hover,   .term[data-p="left"].sel   { transform: translateY(-50%) scale(1.4) }
+.term[data-p="right"]:hover,  .term[data-p="right"].sel  { transform: translateY(-50%) scale(1.4) }
+/* etiqueta +/- */
+.tlbl {
+  position: absolute; font-size: .48rem; font-weight: 900; pointer-events: none;
+  font-family: var(--fb); line-height: 1; background: var(--surf2); border-radius: 3px; padding: 0 2px;
+}
+.term[data-p="top"]    .tlbl { top: -15px; left: 50%; transform: translateX(-50%) }
+.term[data-p="bottom"] .tlbl { bottom: -15px; left: 50%; transform: translateX(-50%) }
+.term[data-p="left"]   .tlbl { left: -15px; top: 50%; transform: translateY(-50%) }
+.term[data-p="right"]  .tlbl { right: -15px; top: 50%; transform: translateY(-50%) }
+
+/* ── BOTÓN ELIMINAR ── */
+.del {
+  position: absolute; top: -9px; right: -9px; width: 19px; height: 19px; border-radius: 50%;
+  background: var(--red); color: #fff; font-size: .65rem; font-weight: 900; border: none;
+  cursor: pointer; display: none; align-items: center; justify-content: center; z-index: 20; line-height: 1;
+}
+.pc:hover .del { display: flex }
+
+/* ── INTERRUPTOR ── */
+.sw-btn {
+  font-size: .58rem; font-weight: 800; padding: 3px 8px; border-radius: 20px;
+  border: 2px solid var(--muted); color: var(--muted); cursor: pointer;
+  background: transparent; transition: all .2s; margin-top: 2px; min-width: 70px; text-align: center;
+}
+.sw-btn.closed { border-color: var(--green); color: var(--green); background: rgba(67,170,139,.12) }
+
+/* ── ESTADOS SIMULACIÓN ── */
+.pc.working .cb { border-color: var(--green)!important; box-shadow: 0 0 22px rgba(67,170,139,.6)!important }
+.pc.broken  .cb { border-color: var(--red)!important;   box-shadow: 0 0 14px rgba(249,65,68,.4)!important }
+
+/* Bombillo encendido */
+.pc.working .b-glass { fill: #fff5b0!important }
+.pc.working .b-glow  { opacity: 1!important }
+.pc.working .b-fil   { stroke: #fff!important; opacity: 1!important; animation: flicker .09s infinite alternate }
+.pc.working .b-shine { opacity: .7!important }
+@keyframes flicker { from{opacity:.7} to{opacity:1} }
+
+/* LED encendido */
+.pc.working .led-body { fill: #ffe566!important }
+.pc.working .led-lens { fill: #fffbe0!important; opacity: .9!important }
+.pc.working .led-rays { opacity: 1!important; animation: ledpulse .45s ease-in-out infinite alternate }
+@keyframes ledpulse { from{opacity:.5} to{opacity:1} }
+
+/* Motor */
+.pc.working .m-rotor { animation: spin .75s linear infinite; transform-box: fill-box; transform-origin: center }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* Timbre */
+.pc.working .bz-bell  { animation: bellRing .18s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 10% }
+.pc.working .bz-waves { opacity: 1!important; animation: wavesPulse .3s ease-in-out infinite alternate }
+@keyframes bellRing  { from{transform:rotate(-7deg)} to{transform:rotate(7deg)} }
+@keyframes wavesPulse{ from{opacity:.3} to{opacity:1} }
+
+/* ── CABLES ── */
+.wire {
+  stroke: var(--yellow); stroke-width: 3.5; fill: none; stroke-linecap: round;
+  cursor: pointer; pointer-events: stroke; transition: stroke .2s;
+}
+.wire:hover { stroke: #fffde0; stroke-width: 5 }
+/* flujo en la dirección del path (from→to igual al flujo eléctrico) */
+.wire.act {
+  stroke: var(--green); stroke-dasharray: 10 5;
+  animation: flow .65s linear infinite;
+  filter: drop-shadow(0 0 5px rgba(67,170,139,.7));
+}
+/* flujo en dirección contraria al path (from→to opuesto al flujo eléctrico) */
+.wire.act-rev {
+  stroke: var(--green); stroke-dasharray: 10 5;
+  animation: flow-rev .65s linear infinite;
+  filter: drop-shadow(0 0 5px rgba(67,170,139,.7));
+}
+.wire.sht { stroke: var(--red); filter: drop-shadow(0 0 5px rgba(249,65,68,.7)) }
+/* dashoffset negativo = dash se mueve hacia adelante (dirección del path) */
+@keyframes flow     { to{ stroke-dashoffset: -30 } }
+/* dashoffset positivo = dash se mueve hacia atrás (contra la dirección del path) */
+@keyframes flow-rev { to{ stroke-dashoffset:  30 } }
+/* cable temporal */
+#tmp {
+  stroke: var(--yellow); stroke-width: 2.5; stroke-dasharray: 6 4; fill: none;
+  animation: da 1s linear infinite; pointer-events: none;
+}
+@keyframes da { to{ stroke-dashoffset: -20 } }
+
+/* ── MENÚ CONTEXTUAL DESCONECTAR ── */
+#ctx-menu {
+  position: fixed;
+  background: var(--surf2);
+  border: 2px solid var(--bdr);
+  border-radius: 10px;
+  padding: 6px 4px;
+  z-index: 9999;
+  min-width: 180px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.6);
+  display: none;
+}
+#ctx-menu .cm-title {
+  font-size: .63rem; font-weight: 800; color: var(--muted);
+  padding: 2px 10px 6px; letter-spacing: .5px; text-transform: uppercase;
+}
+#ctx-menu button {
+  display: block; width: 100%; text-align: left;
+  background: transparent; border: none; color: var(--txt);
+  font-family: var(--fb); font-size: .75rem; font-weight: 700;
+  padding: 7px 12px; border-radius: 6px; cursor: pointer; transition: background .12s;
+}
+#ctx-menu button:hover { background: rgba(249,65,68,.15); color: var(--red) }
+#ctx-menu .cm-sep { height: 1px; background: var(--bdr); margin: 3px 8px }
+#ctx-menu .cm-cancel { color: var(--muted)!important }
+#ctx-menu .cm-cancel:hover { background: rgba(255,255,255,.06)!important; color: var(--txt)!important }
+
+/* ── FOOTER ── */
+#ftr {
+  grid-column: 1 / -1;
+  background: var(--surf); border-top: 2px solid var(--bdr);
+  display: flex; align-items: center; padding: 0 14px; gap: 10px; overflow: hidden;
+}
+.flbl { font-family: var(--ft); font-size: .72rem; color: var(--muted); white-space: nowrap; text-transform: uppercase; letter-spacing: 1px }
+#msg { flex: 1; font-size: .78rem; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis }
+#msg.ok   { color: var(--green) }
+#msg.warn { color: var(--yellow) }
+#msg.err  { color: var(--red) }
+.credits {
+  font-size: .6rem; font-weight: 700; color: var(--muted);
+  white-space: nowrap; opacity: .7; flex-shrink: 0;
+}
+.credits a { color: var(--blue); text-decoration: none }
+.credits a:hover { text-decoration: underline }
+
+/* ── MODAL DE AYUDA ── */
+#help-overlay {
+  position: fixed; inset: 0; background: rgba(10,14,25,.75);
+  z-index: 10000; display: none; align-items: center; justify-content: center;
+  padding: 16px;
+}
+#help-overlay.open { display: flex }
+#help-box {
+  background: var(--surf); border: 2px solid var(--bdr); border-radius: 16px;
+  width: 100%; max-width: 620px; max-height: 90vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.7);
+}
+#help-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px 12px;
+  border-bottom: 2px solid var(--bdr);
+  flex-shrink: 0;
+}
+#help-head h2 { font-family: var(--ft); font-size: 1.1rem; color: var(--yellow) }
+#help-close {
+  background: transparent; border: 2px solid var(--bdr); color: var(--muted);
+  border-radius: 50%; width: 30px; height: 30px; font-size: .9rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all .15s; flex-shrink: 0;
+}
+#help-close:hover { background: var(--red); border-color: var(--red); color: #fff }
+#help-body {
+  overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 16px;
+  scrollbar-width: thin; scrollbar-color: var(--bdr) transparent;
+}
+#help-body::-webkit-scrollbar { width: 5px }
+#help-body::-webkit-scrollbar-thumb { background: var(--bdr); border-radius: 4px }
+.hs { /* help section */
+  background: var(--surf2); border-radius: 10px; padding: 12px 14px;
+  border-left: 4px solid var(--yellow);
+}
+.hs.green { border-left-color: var(--green) }
+.hs.blue  { border-left-color: var(--blue)  }
+.hs.red   { border-left-color: var(--red)   }
+.hs h3 { font-family: var(--ft); font-size: .95rem; margin-bottom: 8px; color: var(--txt) }
+.hs p, .hs li {
+  font-size: .78rem; color: var(--muted); line-height: 1.6; font-weight: 600;
+}
+.hs ul { padding-left: 16px; display: flex; flex-direction: column; gap: 4px }
+.hs li b { color: var(--txt) }
+.hs li span.tag {
+  display: inline-block; font-size: .65rem; font-weight: 800; padding: 1px 6px;
+  border-radius: 20px; margin-left: 4px; vertical-align: middle;
+}
+.tag-y { background: rgba(249,199,79,.2);  color: var(--yellow) }
+.tag-g { background: rgba(67,170,139,.2);  color: var(--green)  }
+.tag-r { background: rgba(249,65,68,.2);   color: var(--red)    }
+.tag-b { background: rgba(76,201,240,.2);  color: var(--blue)   }
+.comp-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;
+}
+.comp-item {
+  background: var(--surf); border-radius: 8px; padding: 8px 10px;
+  border: 1px solid var(--bdr);
+}
+.comp-item .ci-name { font-size: .78rem; font-weight: 800; color: var(--txt); margin-bottom: 3px }
+.comp-item .ci-desc { font-size: .7rem; color: var(--muted); line-height: 1.5 }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══ HEADER ══ -->
+<header id="hdr">
+  <h1>⚡ Lab<span>Circuit</span></h1>
+  <div class="ha">
+    <button class="btn bg" id="btnHelp">❓ Ayuda</button>
+    <button class="btn by" id="btnTest">▶ Probar circuito</button>
+    <button class="btn br" id="btnReset">🗑 Reiniciar</button>
+  </div>
+</header>
+
+<!-- ══ SIDEBAR ══ -->
+<aside id="sb">
+  <h2>Componentes</h2>
+
+  <!-- PILA -->
+  <div class="cc" draggable="true" data-type="battery" title="Pila (batería 9V)">
+    <svg viewBox="0 0 54 52" fill="none">
+      <rect x="7" y="11" width="40" height="28" rx="4" fill="#243a6a" stroke="#4cc9f0" stroke-width="1.8"/>
+      <rect x="17" y="5" width="20" height="7" rx="2.5" fill="#43aa8b" stroke="#2d8c72" stroke-width="1"/>
+      <rect x="21" y="39" width="12" height="5" rx="2" fill="#f94144" stroke="#c0282a" stroke-width="1"/>
+      <line x1="13" y1="20" x2="41" y2="20" stroke="#1e3060" stroke-width="1.5"/>
+      <line x1="13" y1="27" x2="41" y2="27" stroke="#1e3060" stroke-width="1.5"/>
+      <text x="27" y="35" text-anchor="middle" fill="#4cc9f0" font-size="9" font-weight="900" font-family="Fredoka One,cursive">9V</text>
+      <line x1="27" y1="1" x2="27" y2="6" stroke="#43aa8b" stroke-width="2.5"/>
+      <line x1="27" y1="44" x2="27" y2="51" stroke="#f94144" stroke-width="2.5"/>
+      <text x="27" y="5" text-anchor="middle" fill="#43aa8b" font-size="7" font-weight="900" font-family="Nunito,sans-serif" dy="-4">+</text>
+      <text x="27" y="53" text-anchor="middle" fill="#f94144" font-size="7" font-weight="900" font-family="Nunito,sans-serif">−</text>
+    </svg>
+    <span>Pila</span>
+  </div>
+
+  <!-- BOMBILLO -->
+  <div class="cc" draggable="true" data-type="bulb" title="Bombillo">
+    <svg viewBox="0 0 54 52" fill="none">
+      <circle class="b-glass" cx="27" cy="20" r="15" fill="#1d2848" stroke="#f9c74f" stroke-width="1.8"/>
+      <ellipse class="b-shine" cx="21" cy="14" rx="5" ry="4" fill="rgba(255,255,200,.06)" opacity="0"/>
+      <path class="b-fil" d="M20 19 L22 24 L24 19 L26 24 L28 19 L30 24 L32 19"
+        stroke="#f9c74f" stroke-width="1.5" fill="none" opacity=".35"
+        stroke-linecap="round" stroke-linejoin="round"/>
+      <circle class="b-glow" cx="27" cy="20" r="13" fill="rgba(249,199,79,.07)" opacity="0"/>
+      <path d="M19 33 C19 39 35 39 35 33" stroke="#f9c74f" stroke-width="1.8" fill="rgba(100,80,10,.25)" opacity=".8"/>
+      <line x1="21" y1="38" x2="33" y2="38" stroke="#c8a020" stroke-width="1.3"/>
+      <line x1="22" y1="40" x2="32" y2="40" stroke="#a07810" stroke-width="1"/>
+      <line x1="23" y1="42" x2="31" y2="42" stroke="#a07810" stroke-width="1"/>
+      <line x1="27" y1="5" x2="27" y2="9" stroke="#aaa" stroke-width="2"/>
+      <line x1="27" y1="42" x2="27" y2="50" stroke="#aaa" stroke-width="2"/>
+    </svg>
+    <span>Bombillo</span>
+  </div>
+
+  <!-- INTERRUPTOR -->
+  <div class="cc" draggable="true" data-type="switch" title="Interruptor">
+    <svg viewBox="0 0 54 32" fill="none">
+      <circle cx="9"  cy="16" r="4.5" fill="#6e85a8" stroke="#4a6080" stroke-width="1"/>
+      <circle cx="45" cy="16" r="4.5" fill="#6e85a8" stroke="#4a6080" stroke-width="1"/>
+      <line x1="9" y1="16" x2="24" y2="16" stroke="#6e85a8" stroke-width="3" stroke-linecap="round"/>
+      <line x1="24" y1="16" x2="40" y2="8"  stroke="#6e85a8" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <span>Interruptor</span>
+  </div>
+
+  <!-- MOTOR -->
+  <div class="cc" draggable="true" data-type="motor" title="Motor eléctrico">
+    <svg viewBox="0 0 54 52" fill="none">
+      <rect x="7" y="10" width="40" height="32" rx="6" fill="#1d2848" stroke="#4cc9f0" stroke-width="1.8"/>
+      <circle class="m-rotor" cx="27" cy="26" r="11" fill="#243050" stroke="#4cc9f0" stroke-width="1.5"/>
+      <path  class="m-rotor" d="M27 16 L31 22 L23 22 Z" fill="#4cc9f0"/>
+      <text x="27" y="31" text-anchor="middle" fill="#4cc9f0" font-size="12" font-weight="900" font-family="Fredoka One,cursive">M</text>
+      <circle cx="12" cy="15" r="2.5" fill="#1d2848" stroke="#4cc9f0" stroke-width="1"/>
+      <circle cx="42" cy="15" r="2.5" fill="#1d2848" stroke="#4cc9f0" stroke-width="1"/>
+      <circle cx="12" cy="37" r="2.5" fill="#1d2848" stroke="#4cc9f0" stroke-width="1"/>
+      <circle cx="42" cy="37" r="2.5" fill="#1d2848" stroke="#4cc9f0" stroke-width="1"/>
+      <line x1="27" y1="5"  x2="27" y2="11" stroke="#aaa" stroke-width="2.5"/>
+      <line x1="27" y1="42" x2="27" y2="50" stroke="#aaa" stroke-width="2.5"/>
+    </svg>
+    <span>Motor</span>
+  </div>
+
+  <!-- TIMBRE -->
+  <div class="cc" draggable="true" data-type="buzzer" title="Timbre / zumbador">
+    <svg viewBox="0 0 54 52" fill="none">
+      <path class="bz-bell" d="M10 34 C10 16 44 16 44 34 Z" fill="#f94144" stroke="#c0282a" stroke-width="1.5"/>
+      <path d="M8 34 Q27 39 46 34" stroke="#c0282a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M20 14 Q27 8 34 14" stroke="#f94144" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <line x1="27" y1="28" x2="27" y2="39" stroke="#c0282a" stroke-width="1.5"/>
+      <circle cx="27" cy="41" r="3.5" fill="#fff" stroke="#ddd" stroke-width="1"/>
+      <rect x="19" y="34" width="16" height="5" rx="2" fill="#c0282a"/>
+      <g class="bz-waves" opacity=".2">
+        <path d="M47 22 Q53 28 47 34" stroke="#f94144" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <path d="M50 18 Q58 28 50 38" stroke="#f94144" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+      </g>
+      <line x1="27" y1="7"  x2="27" y2="14" stroke="#aaa" stroke-width="2.5"/>
+      <line x1="27" y1="41" x2="27" y2="51" stroke="#aaa" stroke-width="2.5"/>
+    </svg>
+    <span>Timbre</span>
+  </div>
+
+  <!-- LED -->
+  <div class="cc" draggable="true" data-type="led" title="LED (tiene polaridad ±)">
+    <svg viewBox="0 0 54 40" fill="none">
+      <path class="led-body" d="M27 6 A16 16 0 1 0 27 38 Z"
+        fill="#1d2848" stroke="#f9c74f" stroke-width="1.8"/>
+      <line x1="27" y1="6" x2="27" y2="38" stroke="#f9c74f" stroke-width="3"/>
+      <circle class="led-lens" cx="18" cy="16" r="5" fill="rgba(255,248,180,.04)" opacity="0"/>
+      <g class="led-rays" opacity=".18">
+        <line x1="31" y1="7"  x2="37" y2="3"  stroke="#f9c74f" stroke-width="2" stroke-linecap="round"/>
+        <line x1="34" y1="13" x2="41" y2="10" stroke="#f9c74f" stroke-width="2" stroke-linecap="round"/>
+        <line x1="34" y1="20" x2="42" y2="19" stroke="#f9c74f" stroke-width="1.6" stroke-linecap="round"/>
+      </g>
+      <line x1="11" y1="22" x2="4"  y2="22" stroke="#ccc" stroke-width="1.8"/>
+      <line x1="27" y1="22" x2="50" y2="22" stroke="#ccc" stroke-width="1.8"/>
+      <text x="2"  y="36" fill="#43aa8b" font-size="8" font-weight="900" font-family="Nunito,sans-serif">+</text>
+      <text x="44" y="36" fill="#f94144" font-size="8" font-weight="900" font-family="Nunito,sans-serif">−</text>
+    </svg>
+    <span>LED ±</span>
+  </div>
+
+</aside>
+
+<!-- ══ WORKSPACE ══ -->
+<main id="ws">
+  <div id="hint">
+    <div class="hi">🔧</div>
+    <p id="hint-txt">Selecciona un componente del menú y aparecerá aquí.<br>Toca los círculos de los componentes para conectarlos.<br>Mantén presionado un círculo para desconectar.</p>
+  </div>
+  <svg id="wc" xmlns="http://www.w3.org/2000/svg">
+    <line id="tmp" x1="0" y1="0" x2="0" y2="0" style="display:none"/>
+  </svg>
+</main>
+
+<!-- ══ FOOTER ══ -->
+<footer id="ftr">
+  <span class="flbl">📋 Resultado:</span>
+  <span id="msg">Arrastra piezas, clic en las terminales para conectar, luego ▶ Probar circuito.</span>
+  <span class="credits">Elaborado por el <b>Profe. Alvaro Fernández</b> con <a href="https://claude.ai" target="_blank">Claude.Ai</a></span>
+</footer>
+
+<!-- ══ MENÚ DESCONECTAR ══ -->
+<div id="ctx-menu">
+  <div class="cm-title">✂️ Desconectar cable</div>
+  <div id="ctx-list"></div>
+  <div class="cm-sep"></div>
+  <button class="cm-cancel" id="ctx-cancel">Cancelar</button>
+</div>
+
+<!-- ══ MODAL DE AYUDA ══ -->
+<div id="help-overlay">
+  <div id="help-box">
+    <div id="help-head">
+      <h2>📖 Guía de LabCircuit</h2>
+      <button id="help-close" title="Cerrar">✕</button>
+    </div>
+    <div id="help-body">
+
+      <!-- Sección: cómo usar -->
+      <div class="hs">
+        <h3>🔌 ¿Cómo conectar las piezas?</h3>
+        <ul>
+          <li><b>1.</b> Arrastra una pieza desde la barra izquierda al área de trabajo.</li>
+          <li><b>2.</b> Haz clic en el <b>círculo</b> de una terminal para iniciar un cable.</li>
+          <li><b>3.</b> Haz clic en el círculo de <b>otra pieza</b> para completar la conexión.</li>
+          <li><b>4.</b> Puedes conectar <b>varios cables</b> a la misma terminal (circuito en paralelo).</li>
+          <li><b>5.</b> Mueve las piezas arrastrándolas; los cables se actualizan solos.</li>
+          <li><b>6.</b> Presiona <b>▶ Probar circuito</b> para ver si funciona.</li>
+        </ul>
+      </div>
+
+      <!-- Sección: desconectar -->
+      <div class="hs blue">
+        <h3>✂️ ¿Cómo desconectar un cable?</h3>
+        <ul>
+          <li><b>Opción A:</b> Haz clic directamente sobre el cable amarillo para borrarlo.</li>
+          <li><b>Opción B (PC):</b> Clic derecho sobre una terminal → elige qué cable quitar.</li>
+          <li><b>Opción C (celular):</b> Mantén presionada la terminal ~1 segundo → elige el cable.</li>
+          <li><b>ESC</b> o clic en el fondo cancela una conexión a mitad de camino.</li>
+        </ul>
+      </div>
+
+      <!-- Sección: terminales -->
+      <div class="hs green">
+        <h3>🔵 ¿Qué son las terminales?</h3>
+        <p>Son los círculos pequeños que sobresalen de cada pieza. Indican por dónde entra y sale la corriente.</p>
+        <ul style="margin-top:8px">
+          <li>Terminal <b>amarillo</b> <span class="tag tag-y">neutro</span> — cualquier extremo, sin polaridad</li>
+          <li>Terminal <b>verde</b>   <span class="tag tag-g">+ positivo</span> — por aquí sale la corriente de la pila</li>
+          <li>Terminal <b>rojo</b>    <span class="tag tag-r">− negativo</span> — por aquí regresa la corriente a la pila</li>
+        </ul>
+      </div>
+
+      <!-- Sección: componentes -->
+      <div class="hs">
+        <h3>🧩 Los componentes</h3>
+        <div class="comp-grid">
+          <div class="comp-item">
+            <div class="ci-name">🔋 Pila (9V)</div>
+            <div class="ci-desc">La fuente de energía. Tiene terminal <b style="color:#43aa8b">+</b> (arriba, verde) y terminal <b style="color:#f94144">−</b> (abajo, rojo). La corriente sale del + y regresa al −.</div>
+          </div>
+          <div class="comp-item">
+            <div class="ci-name">💡 Bombillo</div>
+            <div class="ci-desc">Se enciende cuando la corriente pasa por él. No tiene polaridad, puede conectarse en cualquier dirección.</div>
+          </div>
+          <div class="comp-item">
+            <div class="ci-name">🔴 LED</div>
+            <div class="ci-desc">Diodo emisor de luz. <b>Tiene polaridad</b>: el terminal <b style="color:#43aa8b">+</b> (lado curvo) debe recibir corriente del <b style="color:#43aa8b">+</b> de la pila. Si lo conectas al revés, no enciende.</div>
+          </div>
+          <div class="comp-item">
+            <div class="ci-name">🔔 Timbre</div>
+            <div class="ci-desc">Suena continuamente mientras reciba corriente. No tiene polaridad.</div>
+          </div>
+          <div class="comp-item">
+            <div class="ci-name">⚙️ Motor</div>
+            <div class="ci-desc">Gira mientras reciba corriente. El zumbido indica que está funcionando. No tiene polaridad.</div>
+          </div>
+          <div class="comp-item">
+            <div class="ci-name">🔘 Interruptor</div>
+            <div class="ci-desc">Abre o cierra el paso de la corriente. Usa el botón <b>ABIERTO / CERRADO</b> para cambiar su estado.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección: polaridad -->
+      <div class="hs red">
+        <h3>⚠️ Polaridad — ¡muy importante!</h3>
+        <ul>
+          <li>La <b>pila</b> y el <b>LED</b> tienen polaridad: deben conectarse en la dirección correcta.</li>
+          <li>La corriente siempre fluye desde el <b style="color:#43aa8b">+</b> de la pila, pasa por los receptores, y regresa al <b style="color:#f94144">−</b>.</li>
+          <li>Si el LED está al revés, el simulador te lo indicará y puedes desconectarlo con clic derecho.</li>
+          <li>Un <b>cortocircuito</b> ocurre si conectas el + y el − de la pila directamente sin ningún receptor en el camino.</li>
+        </ul>
+      </div>
+
+      <!-- Sección: circuito correcto -->
+      <div class="hs green">
+        <h3>✅ ¿Cómo hacer un circuito correcto?</h3>
+        <ul>
+          <li>El camino debe ser <b>cerrado</b>: partir del <b style="color:#43aa8b">+</b> de la pila, pasar por al menos un receptor, y regresar al <b style="color:#f94144">−</b>.</li>
+          <li>Todas las terminales deben estar conectadas.</li>
+          <li>El interruptor debe estar <b>CERRADO</b> para que pase la corriente.</li>
+          <li>Circuito en <b>serie</b>: las piezas se conectan una tras otra en un solo camino.</li>
+          <li>Circuito en <b>paralelo</b>: se conectan varios cables a la misma terminal para crear caminos alternativos.</li>
+        </ul>
+      </div>
+
+    </div><!-- /help-body -->
+  </div><!-- /help-box -->
+</div><!-- /help-overlay -->
+
+</div><!-- /app -->
+
+<script>
+/* ================================================================
+   LABORACIRCUIT — Motor de simulación
+   ================================================================
+   NOVEDADES v3:
+   - Desconectar cables: clic derecho en terminal (PC) o
+     mantener 600ms (móvil) → menú para elegir qué cable quitar
+   - También se puede hacer clic directo sobre el cable para borrarlo
+   - SVGs mejorados para batería, bombillo, timbre y LED
+   ================================================================ */
+
+// ── ESTADO ──────────────────────────────────────────────────────
+const S = {
+  components:  [],
+  connections: [],
+  nid: 1,
+  pending: null,
+  dragging: null,
+  audioCtx: null,
+  sfxNodes: [],
+  longPressTimer: null,
+  buzzerLoop: false,  // controla el bucle continuo del timbre
+};
+
+// ── DOM ─────────────────────────────────────────────────────────
+const ws     = document.getElementById('ws');
+const wc     = document.getElementById('wc');
+const tmp    = document.getElementById('tmp');
+const msgEl  = document.getElementById('msg');
+const hint   = document.getElementById('hint');
+const ctxMenu = document.getElementById('ctx-menu');
+const ctxList = document.getElementById('ctx-list');
+
+// ── DEFINICIONES DE COMPONENTES ─────────────────────────────────
+const DEFS = {
+  battery: {
+    label: 'Pila',
+    terms: [
+      { id:'pos', p:'top',    lbl:'+', neg:false },
+      { id:'neg', p:'bottom', lbl:'−', neg:true  },
+    ],
+    mkSvg: () => `<svg viewBox="0 0 56 60" fill="none">
+      <rect x="8" y="12" width="40" height="32" rx="4" fill="#243a6a" stroke="#4cc9f0" stroke-width="2"/>
+      <rect x="17" y="5"  width="22" height="8"  rx="2.5" fill="#43aa8b" stroke="#2d8c72" stroke-width="1.2"/>
+      <rect x="21" y="44" width="14" height="6"  rx="2"   fill="#f94144" stroke="#c0282a" stroke-width="1.2"/>
+      <line x1="14" y1="22" x2="42" y2="22" stroke="#1e3060" stroke-width="1.5"/>
+      <line x1="14" y1="30" x2="42" y2="30" stroke="#1e3060" stroke-width="1.5"/>
+      <text x="28" y="39" text-anchor="middle" fill="#4cc9f0" font-size="10" font-weight="900" font-family="Fredoka One,cursive">9V</text>
+      <line x1="28" y1="1"  x2="28" y2="6"  stroke="#43aa8b" stroke-width="2.5"/>
+      <line x1="28" y1="50" x2="28" y2="58" stroke="#f94144" stroke-width="2.5"/>
+      <text x="28" y="4" text-anchor="middle" fill="#43aa8b" font-size="8" font-weight="900" font-family="Nunito,sans-serif" dy="-3">+</text>
+      <text x="28" y="59" text-anchor="middle" fill="#f94144" font-size="8" font-weight="900" font-family="Nunito,sans-serif">−</text>
+    </svg>`,
+  },
+
+  bulb: {
+    label: 'Bombillo',
+    terms: [{ id:'a', p:'top' }, { id:'b', p:'bottom' }],
+    mkSvg: () => `<svg viewBox="0 0 56 60" fill="none">
+      <circle class="b-glass" cx="28" cy="22" r="16" fill="#1d2848" stroke="#f9c74f" stroke-width="2"/>
+      <ellipse class="b-shine" cx="22" cy="16" rx="5" ry="4" fill="rgba(255,255,200,.06)" opacity="0"/>
+      <path class="b-fil"
+        d="M20 21 L22 26 L24 21 L26 26 L28 21 L30 26 L32 21 L34 26 L36 21"
+        stroke="#f9c74f" stroke-width="1.5" fill="none" opacity=".35"
+        stroke-linecap="round" stroke-linejoin="round"/>
+      <circle class="b-glow" cx="28" cy="22" r="14" fill="rgba(249,199,79,.08)" opacity="0"/>
+      <path d="M20 36 C20 43 36 43 36 36" stroke="#f9c74f" stroke-width="2" fill="rgba(100,80,10,.3)" opacity=".8"/>
+      <line x1="22" y1="41" x2="34" y2="41" stroke="#c8a020" stroke-width="1.3"/>
+      <line x1="23" y1="43" x2="33" y2="43" stroke="#a07810" stroke-width="1"/>
+      <line x1="24" y1="45" x2="32" y2="45" stroke="#a07810" stroke-width="1"/>
+      <line x1="28" y1="6"  x2="28" y2="10" stroke="#aaa" stroke-width="2"/>
+      <line x1="28" y1="45" x2="28" y2="53" stroke="#aaa" stroke-width="2"/>
+    </svg>`,
+  },
+
+  switch: {
+    label: 'Interruptor',
+    terms: [{ id:'a', p:'left' }, { id:'b', p:'right' }],
+    mkSvg: (closed) => closed
+      ? `<svg viewBox="0 0 56 44" fill="none">
+          <circle cx="9"  cy="22" r="5" fill="#43aa8b" stroke="#2d8c72" stroke-width="1"/>
+          <circle cx="47" cy="22" r="5" fill="#43aa8b" stroke="#2d8c72" stroke-width="1"/>
+          <line x1="9" y1="22" x2="47" y2="22" stroke="#43aa8b" stroke-width="3.5" stroke-linecap="round"/>
+          <rect x="16" y="17" width="24" height="10" rx="4" fill="rgba(67,170,139,.2)" stroke="#43aa8b" stroke-width="1.2"/>
+          <text x="28" y="24.5" text-anchor="middle" fill="#43aa8b" font-size="6.5" font-weight="800" font-family="Nunito,sans-serif">CERRADO</text>
+        </svg>`
+      : `<svg viewBox="0 0 56 44" fill="none">
+          <circle cx="9"  cy="22" r="5" fill="#6e85a8" stroke="#4a6080" stroke-width="1"/>
+          <circle cx="47" cy="22" r="5" fill="#6e85a8" stroke="#4a6080" stroke-width="1"/>
+          <line x1="9" y1="22" x2="25" y2="22" stroke="#6e85a8" stroke-width="3.5" stroke-linecap="round"/>
+          <line x1="25" y1="22" x2="42" y2="13" stroke="#6e85a8" stroke-width="3.5" stroke-linecap="round"/>
+          <text x="28" y="37" text-anchor="middle" fill="#6e85a8" font-size="6.5" font-weight="800" font-family="Nunito,sans-serif">ABIERTO</text>
+        </svg>`,
+  },
+
+  motor: {
+    label: 'Motor',
+    terms: [{ id:'a', p:'top' }, { id:'b', p:'bottom' }],
+    mkSvg: () => `<svg viewBox="0 0 56 60" fill="none">
+      <rect x="8" y="12" width="40" height="32" rx="6" fill="#1d2848" stroke="#4cc9f0" stroke-width="2"/>
+      <circle class="m-rotor" cx="28" cy="28" r="11" fill="#243050" stroke="#4cc9f0" stroke-width="1.5"/>
+      <path   class="m-rotor" d="M28 18 L32 24 L24 24 Z" fill="#4cc9f0"/>
+      <text x="28" y="33" text-anchor="middle" fill="#4cc9f0" font-size="12" font-weight="900" font-family="Fredoka One,cursive">M</text>
+      <circle cx="13" cy="17" r="2.5" fill="#1d2848" stroke="#4cc9f0" stroke-width="1"/>
+      <circle cx="43" cy="17" r="2.5" fill="#1d2848" stroke="#4cc9f0" stroke-width="1"/>
+      <circle cx="13" cy="39" r="2.5" fill="#1d2848" stroke="#4cc9f0" stroke-width="1"/>
+      <circle cx="43" cy="39" r="2.5" fill="#1d2848" stroke="#4cc9f0" stroke-width="1"/>
+      <line x1="28" y1="6"  x2="28" y2="13" stroke="#aaa" stroke-width="2.5"/>
+      <line x1="28" y1="44" x2="28" y2="54" stroke="#aaa" stroke-width="2.5"/>
+    </svg>`,
+  },
+
+  buzzer: {
+    label: 'Timbre',
+    terms: [{ id:'a', p:'top' }, { id:'b', p:'bottom' }],
+    mkSvg: () => `<svg viewBox="0 0 56 60" fill="none">
+      <path class="bz-bell" d="M10 36 C10 18 46 18 46 36 Z" fill="#f94144" stroke="#c0282a" stroke-width="1.5"/>
+      <path d="M8 36 Q28 41 48 36" stroke="#c0282a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M21 15 Q28 8 35 15" stroke="#f94144" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <line x1="28" y1="28" x2="28" y2="41" stroke="#c0282a" stroke-width="1.5"/>
+      <circle cx="28" cy="43" r="3.5" fill="#fff" stroke="#ddd" stroke-width="1"/>
+      <rect x="20" y="36" width="16" height="5" rx="2" fill="#c0282a"/>
+      <g class="bz-waves" opacity=".2">
+        <path d="M49 24 Q55 30 49 36" stroke="#f94144" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <path d="M52 19 Q60 30 52 41" stroke="#f94144" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+      </g>
+      <line x1="28" y1="7"  x2="28" y2="15" stroke="#aaa" stroke-width="2.5"/>
+      <line x1="28" y1="43" x2="28" y2="53" stroke="#aaa" stroke-width="2.5"/>
+    </svg>`,
+  },
+
+  led: {
+    label: 'LED',
+    terms: [
+      { id:'pos', p:'left',  lbl:'+', neg:false },
+      { id:'neg', p:'right', lbl:'−', neg:true  },
+    ],
+    mkSvg: () => `<svg viewBox="0 0 56 44" fill="none">
+      <path class="led-body" d="M28 5 A17 17 0 1 0 28 39 Z"
+        fill="#1d2848" stroke="#f9c74f" stroke-width="2"/>
+      <line x1="28" y1="5" x2="28" y2="39" stroke="#f9c74f" stroke-width="3"/>
+      <circle class="led-lens" cx="18" cy="16" r="5" fill="rgba(255,248,180,.04)" opacity="0"/>
+      <g class="led-rays" opacity=".18">
+        <line x1="32" y1="7"  x2="39" y2="3"  stroke="#f9c74f" stroke-width="2"   stroke-linecap="round"/>
+        <line x1="35" y1="14" x2="43" y2="11" stroke="#f9c74f" stroke-width="2"   stroke-linecap="round"/>
+        <line x1="35" y1="22" x2="44" y2="21" stroke="#f9c74f" stroke-width="1.6" stroke-linecap="round"/>
+      </g>
+      <line x1="11" y1="22" x2="3"  y2="22" stroke="#ccc" stroke-width="2"/>
+      <line x1="28" y1="22" x2="52" y2="22" stroke="#ccc" stroke-width="2"/>
+      <text x="1"  y="38" fill="#43aa8b" font-size="8" font-weight="900" font-family="Nunito,sans-serif">+</text>
+      <text x="45" y="38" fill="#f94144" font-size="8" font-weight="900" font-family="Nunito,sans-serif">−</text>
+    </svg>`,
+  },
+};
+
+// ── UTILS ────────────────────────────────────────────────────────
+function uid()      { return 'k' + (S.nid++) }
+function getComp(id){ return S.components.find(c => c.id === id) }
+function msg(t, c='') { msgEl.textContent = t; msgEl.className = c }
+function updateHint() { hint.classList.toggle('hidden', S.components.length > 0) }
+
+function termXY(compId, termId) {
+  const el = document.querySelector(`[data-cid="${compId}"] [data-tid="${termId}"]`);
+  if (!el) return null;
+  const wr = ws.getBoundingClientRect();
+  const tr = el.getBoundingClientRect();
+  return { x: tr.left - wr.left + tr.width/2, y: tr.top - wr.top + tr.height/2 };
+}
+
+// ── AUDIO ────────────────────────────────────────────────────────
+function getACtx() {
+  if (!S.audioCtx) S.audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+  if (S.audioCtx.state === 'suspended') S.audioCtx.resume();
+  return S.audioCtx;
+}
+function stopSfx() {
+  S.buzzerLoop = false; // corta el bucle del timbre
+  S.sfxNodes.forEach(n => { try { n.stop() } catch(e){} });
+  S.sfxNodes = [];
+}
+function mkOsc(type, freq, vol, dur, delay=0) {
+  const c=getACtx(), o=c.createOscillator(), g=c.createGain();
+  o.connect(g); g.connect(c.destination);
+  o.type=type; o.frequency.value=freq;
+  const t=c.currentTime+delay;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+  o.start(t); o.stop(t+dur); S.sfxNodes.push(o);
+}
+function playBulb()   { mkOsc('sine', 880, .12, .4) }
+function playLED()    { mkOsc('sine', 1300, .09, .2) }
+function playMotor()  { mkOsc('sawtooth', 48, .05, 9999) }
+function playBuzzer() {
+  // Ding-dong en bucle continuo hasta que stopSfx() lo corte
+  S.buzzerLoop = true;
+  function ring() {
+    if (!S.buzzerLoop) return;
+    mkOsc('triangle', 700, .18, .45);
+    setTimeout(() => {
+      if (!S.buzzerLoop) return;
+      mkOsc('triangle', 550, .18, .4);
+      setTimeout(() => { if (S.buzzerLoop) ring(); }, 900);
+    }, 320);
+  }
+  ring();
+}
+
+// ── RENDER COMPONENTE ────────────────────────────────────────────
+function renderComp(comp) {
+  const def = DEFS[comp.type];
+  const el  = document.createElement('div');
+  el.className = 'pc';
+  el.style.left = comp.x + 'px';
+  el.style.top  = comp.y + 'px';
+  el.dataset.cid = comp.id;
+
+  const body = document.createElement('div');
+  body.className = 'cb';
+
+  // SVG
+  const sd = document.createElement('div');
+  sd.innerHTML = def.mkSvg(comp.props.closed);
+  body.appendChild(sd);
+
+  // Etiqueta
+  const lbl = document.createElement('div');
+  lbl.className = 'cl';
+  lbl.textContent = def.label;
+  body.appendChild(lbl);
+
+  // Terminales
+  def.terms.forEach(t => {
+    const td = document.createElement('div');
+    td.className = 'term' + (t.neg ? ' neg' : '');
+    td.dataset.p   = t.p;
+    td.dataset.tid = t.id;
+    td.dataset.cid = comp.id;
+
+    if (t.lbl) {
+      const ls = document.createElement('span');
+      ls.className = 'tlbl';
+      ls.textContent = t.lbl;
+      ls.style.color = t.neg ? '#f94144' : '#43aa8b';
+      td.appendChild(ls);
+    }
+
+    // Clic izquierdo → conectar (desktop)
+    td.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      handleTermClick(comp.id, t.id, td);
+    });
+
+    // Clic derecho → menú desconectar (desktop)
+    td.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      showCtxMenu(comp.id, t.id, e.clientX, e.clientY);
+    });
+
+    // Touch en terminal (móvil)
+    // touchstart: registrar posición y hora para distinguir tap de long-press
+    // touchend:   si fue tap (<500ms sin moverse) → conectar
+    //             si fue long-press (>=500ms) → menú desconectar
+    let termTouchStart = 0, termTouchX = 0, termTouchY = 0;
+
+    td.addEventListener('touchstart', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      termTouchStart = Date.now();
+      termTouchX = e.touches[0].clientX;
+      termTouchY = e.touches[0].clientY;
+    }, { passive: false });
+
+    td.addEventListener('touchend', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      const dt = Date.now() - termTouchStart;
+      const dx = Math.abs(e.changedTouches[0].clientX - termTouchX);
+      const dy = Math.abs(e.changedTouches[0].clientY - termTouchY);
+      if (dx < 10 && dy < 10) {
+        if (dt < 600) {
+          // Tap corto → conectar
+          handleTermClick(comp.id, t.id, td);
+        } else {
+          // Toque largo → desconectar
+          showCtxMenu(comp.id, t.id, e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+        }
+      }
+    }, { passive: false });
+
+    body.appendChild(td);
+  });
+
+  // Botón eliminar componente (visible siempre en móvil via CSS)
+  const del = document.createElement('button');
+  del.className = 'del';
+  del.textContent = '×';
+  del.title = 'Eliminar componente';
+  del.addEventListener('click', e => { e.stopPropagation(); removeComp(comp.id) });
+  del.addEventListener('touchend', e => { e.stopPropagation(); e.preventDefault(); removeComp(comp.id) });
+  body.appendChild(del);
+
+  el.appendChild(body);
+
+  // Botón toggle interruptor
+  if (comp.type === 'switch') {
+    const btn = document.createElement('button');
+    btn.className = 'sw-btn' + (comp.props.closed ? ' closed' : '');
+    btn.textContent = comp.props.closed ? '● CERRADO' : '○ ABIERTO';
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      comp.props.closed = !comp.props.closed;
+      refreshComp(comp);
+      clearSim();
+    });
+    el.appendChild(btn);
+  }
+
+  makeDraggable(el, comp);
+  ws.appendChild(el);
+}
+
+function refreshComp(comp) {
+  document.querySelector(`[data-cid="${comp.id}"]`)?.remove();
+  renderComp(comp);
+  redrawWires();
+}
+
+function removeComp(id) {
+  S.connections = S.connections.filter(c => c.from.compId !== id && c.to.compId !== id);
+  S.components  = S.components.filter(c => c.id !== id);
+  document.querySelector(`[data-cid="${id}"]`)?.remove();
+  redrawWires();
+  updateHint();
+  clearSim();
+}
+
+// ── MENÚ CONTEXTUAL PARA DESCONECTAR ────────────────────────────
+/*
+  Muestra un pequeño popup con todos los cables de ese terminal.
+  El usuario elige cuál quitar.
+  Activación:
+    PC/Mac  → clic derecho sobre la terminal
+    Móvil   → mantener presionada la terminal ≥ 600ms
+*/
+function showCtxMenu(compId, termId, px, py) {
+  cancelPending();
+  ctxList.innerHTML = '';
+
+  const cables = S.connections.filter(c =>
+    (c.from.compId === compId && c.from.termId === termId) ||
+    (c.to.compId   === compId && c.to.termId   === termId)
+  );
+
+  if (cables.length === 0) {
+    const btn = document.createElement('button');
+    btn.textContent = 'No hay cables aquí';
+    btn.disabled = true;
+    btn.style.cssText = 'color:var(--muted);cursor:default';
+    ctxList.appendChild(btn);
+  } else {
+    cables.forEach(conn => {
+      const otherId  = conn.from.compId === compId ? conn.to.compId   : conn.from.compId;
+      const otherTid = conn.from.compId === compId ? conn.to.termId   : conn.from.termId;
+      const other    = getComp(otherId);
+      const label    = other ? DEFS[other.type].label : '?';
+      const btn = document.createElement('button');
+      btn.innerHTML = `✂️ &nbsp;Cable → <b>${label}</b> (${otherTid})`;
+      btn.addEventListener('click', () => {
+        removeConn(conn.id);
+        hideCtxMenu();
+        msg(`✂️ Cable desconectado de ${label}.`, 'warn');
+      });
+      ctxList.appendChild(btn);
+    });
+  }
+
+  ctxMenu.style.display = 'block';
+  // Reposicionar para no salirse de la pantalla
+  const vw = window.innerWidth, vh = window.innerHeight;
+  ctxMenu.style.left = '0px'; ctxMenu.style.top = '0px'; // reset para medir
+  const mw = ctxMenu.offsetWidth || 190;
+  const mh = ctxMenu.offsetHeight || 130;
+  ctxMenu.style.left = Math.min(px + 4, vw - mw - 8) + 'px';
+  ctxMenu.style.top  = Math.min(py + 4, vh - mh - 8) + 'px';
+}
+
+function hideCtxMenu() { ctxMenu.style.display = 'none' }
+
+document.getElementById('ctx-cancel').addEventListener('click', hideCtxMenu);
+// Cerrar al hacer clic fuera
+document.addEventListener('mousedown',  e => { if (!ctxMenu.contains(e.target)) hideCtxMenu() });
+document.addEventListener('touchstart', e => { if (!ctxMenu.contains(e.target)) hideCtxMenu() }, { passive: true });
+
+function addComp(type, x, y) {
+  const comp = { id: uid(), type, x, y, props: { closed: false } };
+  S.components.push(comp);
+  renderComp(comp);
+  updateHint();
+  clearSim();
+}
+
+// ── ARRASTRAR COMPONENTES EN EL CANVAS ──────────────────────────
+function makeDraggable(el, comp) {
+  // MOUSE (desktop)
+  el.addEventListener('mousedown', e => {
+    const t = e.target;
+    if (t.classList.contains('term') || t.classList.contains('del') ||
+        t.closest('.sw-btn') || t.closest('.del') || t.closest('.term')) return;
+    if (S.pending) return;
+    e.preventDefault();
+    S.dragging = { comp, el, ox: comp.x, oy: comp.y, sx: e.clientX, sy: e.clientY };
+  });
+
+  // TOUCH (móvil) — solo arrastra desde el cuerpo, nunca desde terminales ni botones
+  el.addEventListener('touchstart', e => {
+    const t = e.target;
+    // Si el toque es en una terminal o botón, NO iniciar arrastre
+    // (esos elementos tienen sus propios handlers)
+    if (t.classList.contains('term') || t.closest('.term') ||
+        t.classList.contains('del')  || t.closest('.del')  ||
+        t.classList.contains('tlbl') ||
+        t.closest('.sw-btn')) return;
+    if (S.pending) return;
+    // NO llamamos preventDefault aquí para no bloquear tap en terminales cercanas
+    const touch = e.touches[0];
+    S.dragging = { comp, el, ox: comp.x, oy: comp.y, sx: touch.clientX, sy: touch.clientY };
+  }, { passive: true }); // passive:true = no bloquea scroll ni otros eventos
+}
+
+document.addEventListener('mousemove', e => {
+  if (S.dragging) {
+    const { comp, el, ox, oy, sx, sy } = S.dragging;
+    comp.x = ox + (e.clientX - sx);
+    comp.y = oy + (e.clientY - sy);
+    el.style.left = comp.x + 'px';
+    el.style.top  = comp.y + 'px';
+    redrawWires();
+    return;
+  }
+  if (S.pending) {
+    const wr = ws.getBoundingClientRect();
+    tmp.setAttribute('x2', e.clientX - wr.left);
+    tmp.setAttribute('y2', e.clientY - wr.top);
+  }
+});
+document.addEventListener('touchmove', e => {
+  if (!S.dragging) return;
+  const t = e.touches[0];
+  const { comp, el, ox, oy, sx, sy } = S.dragging;
+  comp.x = ox + (t.clientX - sx);
+  comp.y = oy + (t.clientY - sy);
+  el.style.left = comp.x + 'px';
+  el.style.top  = comp.y + 'px';
+  redrawWires();
+}, { passive: false });
+document.addEventListener('mouseup',  () => { S.dragging = null });
+document.addEventListener('touchend', () => { S.dragging = null });
+
+// ── CONEXIÓN DE TERMINALES ───────────────────────────────────────
+function handleTermClick(compId, termId, termEl) {
+  if (!S.pending) {
+    // Primera terminal
+    S.pending = { compId, termId, el: termEl };
+    termEl.classList.add('sel');
+    msg('🔌 Terminal seleccionada. Clic en otra terminal para conectar. (ESC cancela)', 'warn');
+    const c = termXY(compId, termId);
+    if (c) {
+      tmp.setAttribute('x1', c.x); tmp.setAttribute('y1', c.y);
+      tmp.setAttribute('x2', c.x); tmp.setAttribute('y2', c.y);
+      tmp.style.display = 'block';
+    }
+  } else {
+    // Segunda terminal → crear cable
+    const from = S.pending;
+    if (from.compId === compId && from.termId === termId) { cancelPending(); return; }
+    S.connections.push({
+      id: uid(),
+      from: { compId: from.compId, termId: from.termId },
+      to:   { compId, termId },
+    });
+    redrawWires();
+    clearSim();
+    msg('✅ Cable conectado. Sigue conectando o presiona ▶ Probar circuito.', '');
+    cancelPending();
+  }
+}
+
+function cancelPending() {
+  if (S.pending) { S.pending.el.classList.remove('sel'); S.pending = null; }
+  tmp.style.display = 'none';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cancelPending() });
+ws.addEventListener('mousedown', e => {
+  if ((e.target === ws || e.target === wc) && S.pending) cancelPending();
+});
+ws.addEventListener('mousemove', e => {
+  if (!S.pending) return;
+  const wr = ws.getBoundingClientRect();
+  tmp.setAttribute('x2', e.clientX - wr.left);
+  tmp.setAttribute('y2', e.clientY - wr.top);
+});
+
+// ── DIBUJAR CABLES ───────────────────────────────────────────────
+function redrawWires() {
+  wc.querySelectorAll('.wire').forEach(e => e.remove());
+  S.connections.forEach(conn => {
+    const fc = getComp(conn.from.compId);
+    const tc = getComp(conn.to.compId);
+    if (!fc || !tc) return;
+    const p1 = termXY(fc.id, conn.from.termId);
+    const p2 = termXY(tc.id, conn.to.termId);
+    if (!p1 || !p2) return;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.classList.add('wire');
+    path.dataset.connId = conn.id;
+    const dx = Math.abs(p2.x - p1.x) * 0.5 + 20;
+    path.setAttribute('d',
+      `M${p1.x},${p1.y} C${p1.x+dx},${p1.y} ${p2.x-dx},${p2.y} ${p2.x},${p2.y}`
+    );
+    path.style.pointerEvents = 'stroke';
+    path.addEventListener('click', () => { removeConn(conn.id); msg('🗑 Cable eliminado.', '') });
+    path.title = 'Clic para eliminar este cable';
+    wc.appendChild(path);
+  });
+}
+
+function removeConn(id) {
+  S.connections = S.connections.filter(c => c.id !== id);
+  redrawWires();
+  clearSim();
+}
+
+// ── LIMPIAR SIMULACIÓN ───────────────────────────────────────────
+function clearSim() {
+  stopSfx();
+  document.querySelectorAll('.pc').forEach(e => e.classList.remove('working', 'broken'));
+  wc.querySelectorAll('.wire').forEach(p => p.classList.remove('act', 'act-rev', 'sht'));
+}
+
+// ── REINICIAR ────────────────────────────────────────────────────
+document.getElementById('btnReset').addEventListener('click', () => {
+  stopSfx(); cancelPending(); hideCtxMenu();
+  S.components = []; S.connections = []; S.nid = 1; S.buzzerLoop = false;
+  // Eliminar todos los componentes del DOM
+  document.querySelectorAll('.pc').forEach(e => e.remove());
+  // Eliminar todos los cables del SVG (excepto la línea temporal)
+  wc.querySelectorAll('path.wire').forEach(e => e.remove());
+  updateHint();
+  msg('Circuito reiniciado. ¡Comienza de nuevo!', '');
+});
+
+// ── AYUDA (MODAL) ────────────────────────────────────────────────
+const helpOverlay = document.getElementById('help-overlay');
+document.getElementById('btnHelp').addEventListener('click', () => {
+  helpOverlay.classList.add('open');
+});
+document.getElementById('help-close').addEventListener('click', () => {
+  helpOverlay.classList.remove('open');
+});
+helpOverlay.addEventListener('click', e => {
+  if (e.target === helpOverlay) helpOverlay.classList.remove('open');
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') helpOverlay.classList.remove('open');
+});
+
+// ── ANÁLISIS DEL CIRCUITO ────────────────────────────────────────
+document.getElementById('btnTest').addEventListener('click', testCircuit);
+
+function testCircuit() {
+  clearSim();
+
+  // 1. Necesita batería
+  const bats = S.components.filter(c => c.type === 'battery');
+  if (!bats.length) { msg('❌ No hay ninguna pila. Agrega una al circuito.', 'err'); return; }
+  const bat = bats[0];
+
+  // 2. Terminales sin conectar
+  const unconn = [];
+  S.components.forEach(comp => {
+    DEFS[comp.type].terms.forEach(t => {
+      const ok = S.connections.some(c =>
+        (c.from.compId === comp.id && c.from.termId === t.id) ||
+        (c.to.compId   === comp.id && c.to.termId   === t.id)
+      );
+      if (!ok) unconn.push({ comp, t });
+    });
+  });
+  if (unconn.length) {
+    const names = [...new Set(unconn.map(u => DEFS[u.comp.type].label))].join(', ');
+    unconn.forEach(({ comp }) => mark(comp.id, 'broken'));
+    msg(`⚠️ Terminales sin conectar en: ${names}. Cada pieza necesita sus dos terminales.`, 'warn');
+    return;
+  }
+
+  // 3. Construir grafo + detectar cortocircuito
+  const G  = buildGraph();
+  const pn = nk(bat.id, 'pos');
+  const nn = nk(bat.id, 'neg');
+
+  const shortP = bfs(pn, nn, G, true);
+  if (shortP) {
+    msg('⚡ ¡CORTOCIRCUITO! Hay un camino directo entre + y − sin receptores. Eso puede dañar la pila.', 'err');
+    hlPath(shortP, 'sht');
+    return;
+  }
+
+  // 4. Verificar que existe AL MENOS un camino cerrado
+  const anyPath = bfs(pn, nn, G, false);
+  if (!anyPath) {
+    const openSw = S.components.filter(c => c.type === 'switch' && !c.props.closed);
+    if (openSw.length) {
+      openSw.forEach(c => mark(c.id, 'broken'));
+      msg('🔴 El interruptor está abierto. La corriente no puede circular. ¡Ciérralo!', 'warn');
+    } else {
+      msg('🔴 El circuito está abierto. Verifica que todos los componentes formen un camino cerrado entre + y − de la pila.', 'err');
+    }
+    return;
+  }
+
+  /*
+   * 5. ANÁLISIS COMPLETO PARA CIRCUITOS EN PARALELO
+   * ─────────────────────────────────────────────────
+   * En lugar de buscar un solo camino, determinamos qué nodos y cables
+   * son alcanzables DESDE el + de la batería Y TAMBIÉN pueden llegar
+   * al − de la batería. Un cable "activo" es aquel cuyos dos extremos
+   * cumplen ambas condiciones: son alcanzables desde + y pueden llegar a −.
+   *
+   * Esto garantiza que TODOS los ramales en paralelo se marquen como activos.
+   */
+
+  // Nodos alcanzables desde el + (hacia adelante)
+  const fromPos = reachable(pn, G);
+
+  // Nodos que pueden LLEGAR al − (alcanzables desde − hacia atrás = mismo grafo no dirigido)
+  const toNeg   = reachable(nn, G);
+
+  // Un nodo está "en circuito activo" si es alcanzable desde + Y puede llegar a −
+  const activeNodes = new Set([...fromPos].filter(n => toNeg.has(n)));
+
+  // 5b. Polaridad LED — verificar usando el primer camino encontrado
+  const ledErr = S.components.filter(c => c.type === 'led').filter(led => {
+    // El ánodo debe estar más cerca del + que el cátodo.
+    // Usamos distancia BFS desde + para comparar.
+    const distPos = bfsDist(pn, G);
+    const dAnodo  = distPos.get(nk(led.id, 'pos')) ?? Infinity;
+    const dCatodo = distPos.get(nk(led.id, 'neg')) ?? Infinity;
+    // Ambos deben ser alcanzables y el ánodo debe estar antes
+    return dAnodo !== Infinity && dCatodo !== Infinity && dAnodo > dCatodo;
+  });
+  if (ledErr.length) {
+    ledErr.forEach(c => mark(c.id, 'broken'));
+    msg('💡 El LED está al revés. El terminal + (ánodo) debe recibir corriente del + de la pila. Usa clic derecho para desconectar y voltear el LED.', 'err');
+    return;
+  }
+
+  // 6. Marcar receptores: funcionan si AMBAS terminales están en activeNodes
+  const recvs = S.components.filter(c => ['bulb','motor','buzzer','led'].includes(c.type));
+  const wk = new Set(), bk = new Set();
+  recvs.forEach(comp => {
+    const terms = DEFS[comp.type].terms;
+    const allActive = terms.every(t => activeNodes.has(nk(comp.id, t.id)));
+    if (allActive) { wk.add(comp.id); mark(comp.id, 'working'); }
+    else           { bk.add(comp.id); mark(comp.id, 'broken');  }
+  });
+
+  // 7. Animar TODOS los cables activos (ambos extremos en activeNodes)
+  //    usando la distancia desde + para determinar la dirección del flujo
+  const distFromPos = bfsDist(pn, G);
+  hlActiveWires(activeNodes, distFromPos);
+  mark(bat.id, 'working');
+
+  // Sonidos
+  wk.forEach(id => {
+    switch (getComp(id)?.type) {
+      case 'bulb':   playBulb();   break;
+      case 'motor':  playMotor();  break;
+      case 'buzzer': playBuzzer(); break;
+      case 'led':    playLED();    break;
+    }
+  });
+
+  // Mensaje final
+  if (!recvs.length) {
+    msg('✅ Circuito cerrado, pero sin receptores. ¡Agrega un bombillo, motor, timbre o LED!', 'warn');
+  } else if (!bk.size) {
+    msg(`🌟 ¡Perfecto! Funciona: ${recvs.map(c => DEFS[c.type].label).join(', ')}. ¡Excelente trabajo!`, 'ok');
+  } else {
+    const wl = [...wk].map(id => DEFS[getComp(id).type].label).join(', ') || 'ninguno';
+    const bl = [...bk].map(id => DEFS[getComp(id).type].label).join(', ');
+    msg(`⚠️ Funciona: ${wl}. Sin corriente: ${bl}. Verifica que estén en el camino cerrado.`, 'warn');
+  }
+}
+
+// ── GRAFO Y BÚSQUEDAS ────────────────────────────────────────────
+function nk(c, t) { return c + ':' + t }
+
+function buildGraph() {
+  const g = new Map();
+  const edge = (a, b) => {
+    if (!g.has(a)) g.set(a, new Set());
+    if (!g.has(b)) g.set(b, new Set());
+    g.get(a).add(b); g.get(b).add(a);
+  };
+  S.connections.forEach(c => {
+    edge(nk(c.from.compId, c.from.termId), nk(c.to.compId, c.to.termId));
+  });
+  S.components.forEach(comp => {
+    if (comp.type === 'battery') return;
+    const ts = DEFS[comp.type].terms;
+    if (ts.length < 2) return;
+    if (comp.type === 'switch') {
+      if (comp.props.closed) edge(nk(comp.id, 'a'), nk(comp.id, 'b'));
+      return;
+    }
+    for (let i = 0; i < ts.length; i++)
+      for (let j = i+1; j < ts.length; j++)
+        edge(nk(comp.id, ts[i].id), nk(comp.id, ts[j].id));
+  });
+  return g;
+}
+
+/** BFS que devuelve el conjunto de nodos alcanzables desde start */
+function reachable(start, graph) {
+  const vis = new Set([start]);
+  const q = [start];
+  while (q.length) {
+    const node = q.shift();
+    for (const nb of (graph.get(node) || [])) {
+      if (!vis.has(nb)) { vis.add(nb); q.push(nb); }
+    }
+  }
+  return vis;
+}
+
+/** BFS que devuelve un Map nodo→distancia desde start */
+function bfsDist(start, graph) {
+  const dist = new Map([[start, 0]]);
+  const q = [start];
+  while (q.length) {
+    const node = q.shift();
+    const d = dist.get(node);
+    for (const nb of (graph.get(node) || [])) {
+      if (!dist.has(nb)) { dist.set(nb, d + 1); q.push(nb); }
+    }
+  }
+  return dist;
+}
+
+/** BFS clásico que devuelve el primer camino encontrado (para cortocircuito) */
+function bfs(start, end, graph, shortCircuit) {
+  const vis = new Set([start]), q = [[start]];
+  while (q.length) {
+    const path = q.shift(), node = path[path.length - 1];
+    if (node === end) return path;
+    for (const nb of (graph.get(node) || [])) {
+      if (vis.has(nb)) continue;
+      if (shortCircuit) {
+        const [cid] = nb.split(':');
+        const c = getComp(cid);
+        if (c && c.type !== 'wire' && nb !== end) continue;
+      }
+      vis.add(nb); q.push([...path, nb]);
+    }
+  }
+  return null;
+}
+
+function mark(id, cls) {
+  document.querySelector(`[data-cid="${id}"]`)?.classList.add(cls);
+}
+
+/**
+ * Anima TODOS los cables cuyos dos extremos están en activeNodes.
+ * La dirección se determina comparando la distancia desde el + de la pila:
+ * el extremo con MENOR distancia es el "inicio" del flujo en ese cable.
+ */
+function hlActiveWires(activeNodes, distFromPos) {
+  S.connections.forEach(conn => {
+    const nodeA = nk(conn.from.compId, conn.from.termId);
+    const nodeB = nk(conn.to.compId,   conn.to.termId);
+    if (!activeNodes.has(nodeA) || !activeNodes.has(nodeB)) return;
+
+    const el = wc.querySelector(`[data-conn-id="${conn.id}"]`);
+    if (!el) return;
+
+    // Distancia desde + para cada extremo del cable
+    const dA = distFromPos.get(nodeA) ?? Infinity;
+    const dB = distFromPos.get(nodeB) ?? Infinity;
+
+    // El flujo va del extremo más cercano al + hacia el más lejano
+    // Si conn.from (nodeA) está MÁS CERCA del +, el flujo va A→B = dirección del path SVG → 'act'
+    // Si conn.to   (nodeB) está MÁS CERCA del +, el flujo va B→A = contra el path SVG   → 'act-rev'
+    if (dA <= dB) {
+      el.classList.add('act');
+    } else {
+      el.classList.add('act-rev');
+    }
+  });
+}
+
+/** hlPath para cortocircuito (usa un array de nodos, no activeNodes) */
+function hlPath(path, cls) {
+  for (let i = 0; i < path.length - 1; i++) {
+    const [ac, at] = path[i].split(':');
+    const [bc, bt] = path[i+1].split(':');
+    const conn = S.connections.find(c =>
+      (c.from.compId===ac && c.from.termId===at && c.to.compId===bc   && c.to.termId===bt) ||
+      (c.to.compId===ac   && c.to.termId===at   && c.from.compId===bc && c.from.termId===bt)
+    );
+    if (conn) wc.querySelector(`[data-conn-id="${conn.id}"]`)?.classList.add(cls);
+  }
+}
+
+// ── SIDEBAR: agregar componentes ────────────────────────────────
+/*
+  DESKTOP: drag & drop (dragstart / drop).
+  MÓVIL:   toque simple (tap) en cualquier parte de la tarjeta → agrega
+           el componente al centro del workspace. El scroll de la barra
+           sigue siendo nativo (touch-action: pan-x en el CSS).
+*/
+
+// Función que coloca un componente en el centro del workspace
+function addCompCenter(type) {
+  const wr = ws.getBoundingClientRect();
+  // Posición central con pequeño offset aleatorio para no apilar
+  const cx = wr.width  / 2 - 34 + (Math.random() - 0.5) * 80;
+  const cy = wr.height / 2 - 30 + (Math.random() - 0.5) * 80;
+  addComp(type, Math.max(10, cx), Math.max(10, cy));
+}
+
+document.querySelectorAll('.cc').forEach(card => {
+  // DESKTOP: drag & drop
+  card.addEventListener('dragstart', e => { e.dataTransfer.setData('ct', card.dataset.type) });
+
+  // MÓVIL: tap simple en la tarjeta → agregar al workspace
+  // Usamos touchend para no interferir con el scroll.
+  // Solo disparamos si el dedo no se movió (no era scroll).
+  let tapStartX = 0, tapStartY = 0;
+  card.addEventListener('touchstart', e => {
+    tapStartX = e.touches[0].clientX;
+    tapStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  card.addEventListener('touchend', e => {
+    const dx = Math.abs(e.changedTouches[0].clientX - tapStartX);
+    const dy = Math.abs(e.changedTouches[0].clientY - tapStartY);
+    // Si el dedo se movió menos de 12px → fue un tap, no scroll
+    if (dx < 12 && dy < 12) {
+      e.preventDefault();
+      addCompCenter(card.dataset.type);
+    }
+  }, { passive: false });
+});
+
+// DESKTOP: drop en el workspace
+ws.addEventListener('dragover', e => e.preventDefault());
+ws.addEventListener('drop', e => {
+  e.preventDefault();
+  const t = e.dataTransfer.getData('ct');
+  if (!t) return;
+  const wr = ws.getBoundingClientRect();
+  addComp(t, e.clientX - wr.left - 34, e.clientY - wr.top - 30);
+});
+
+// Actualizar el hint según dispositivo
+function updateHintText() {
+  const hintTxt = document.getElementById('hint-txt');
+  if (!hintTxt) return;
+  if (window.innerWidth <= 640) {
+    hintTxt.innerHTML = 'Selecciona un componente del menú y aparecerá aquí.<br>Toca los círculos de los componentes para conectarlos.<br>Mantén presionado un círculo para desconectar.';
+  } else {
+    hintTxt.innerHTML = 'Selecciona un componente del menú y aparecerá aquí.<br>Clic en los círculos de los componentes para conectarlos.<br>Clic derecho en un círculo para desconectar.';
+  }
+}
+updateHintText();
+window.addEventListener('resize', updateHintText);
+
+// ── INIT ─────────────────────────────────────────────────────────
+updateHint();
+</script>
+</body>
+</html>
